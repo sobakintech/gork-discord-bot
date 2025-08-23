@@ -1,0 +1,14 @@
+{
+  "name": "gork-discord-bot",
+  "version": "1.0.0",
+  "description": "A Discord bot that answers yes/no questions",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  }
+}
