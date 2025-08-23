@@ -1,6 +1,4 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fs = require('fs');
 require('dotenv').config();
 
 const client = new Client({
@@ -8,44 +6,45 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
-    ]
+    ],
+    allowedMentions: {
+        parse: ['users'],
+        repliedUser: false
+    }
 });
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const userCooldowns = new Map();
 const userCooldownMessages = new Map();
-const COOLDOWN_TIME = 10000;
+const COOLDOWN_TIME = 1000;
 
+// slang responses written by ai
 const yesResponses = [
     'Yes',
     'Absolutely',
-    'fr bruh',
-    'ngl that\'s facts',
-    'lowkey yeah',
-    'icl that\'s true',
-    'deadass',
-    'no cap',
-    'periodt',
-    'that\'s bussin ngl'
+    'ofc',
+    'no shit'
 ];
 
 const noResponses = [
     'No',
-    'Nah bruh',
-    'cap',
-    'that\'s mid tbh',
-    'icl that ain\'t it',
-    'nah ts weird',
-    'bruh what 💀',
-    'that\'s lowkey false',
     'nah fam',
+    'ofc not'
+];
+
+const maybeResponses = [
+    'maybe',
+    'idk',
+    'could be',
+    'might be true',
+    'possibly',
+    'who knows',
+    'unclear tbh',
+    'hard to say',
     'idk bout that one chief'
 ];
 
 client.once('clientReady', () => {
-    console.log(`Bot is ready! Logged in as ${client.user.tag}`);
+    console.log(`Logged in as ${client.user.tag}`);
     
     setInterval(() => {
         const now = Date.now();
@@ -58,9 +57,7 @@ client.once('clientReady', () => {
     }, 60000);
 });
 
-client.on('messageCreate', async message => {
-    if (message.author.bot) return;
-    
+client.on('messageCreate', async message => {    
     if (message.mentions.has(client.user) && message.content.toLowerCase().includes('is this true')) {
         const userId = message.author.id;
         const now = Date.now();
@@ -69,8 +66,7 @@ client.on('messageCreate', async message => {
             const expirationTime = userCooldowns.get(userId) + COOLDOWN_TIME;
             if (now < expirationTime) {
                 if (!userCooldownMessages.has(userId)) {
-                    const timeLeft = Math.ceil((expirationTime - now) / 1000);
-                    const cooldownMessage = await message.reply(`bruh chill, wait <t:${Math.floor(expirationTime / 1000)}:R> 💀`);
+                    const cooldownMessage = await message.reply(`chill bro, you'll be able to use me again <t:${Math.floor(expirationTime / 1000)}:R>`);
                     
                     userCooldownMessages.set(userId, true);
                     
@@ -85,42 +81,26 @@ client.on('messageCreate', async message => {
         
         userCooldowns.set(userId, now);
         
+        const randomValue = Math.random();
+        let response;
+        
+        if (randomValue < 0.2) {
+            response = maybeResponses[Math.floor(Math.random() * maybeResponses.length)];
+        } else if (randomValue < 0.6) {
+            response = yesResponses[Math.floor(Math.random() * yesResponses.length)];
+        } else {
+            response = noResponses[Math.floor(Math.random() * noResponses.length)];
+        }
+        
         if (message.reference && message.reference.messageId) {
             try {
                 const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
-                const prompt = repliedMessage.content;
-                
-                if (prompt && prompt.trim() !== '') {
-                    await message.channel.sendTyping();
-                    
-                    const promptTemplate = fs.readFileSync('prompt.md', 'utf8');
-                    const fullPrompt = promptTemplate.replace('{CONTENT}', prompt);
-                    
-                    const result = await model.generateContent(fullPrompt);
-                    const response = result.response;
-                    const text = response.text();
-                    
-                    message.reply(text.trim());
-                } else {
-                    const isYes = Math.random() < 0.5;
-                    const response = isYes 
-                        ? yesResponses[Math.floor(Math.random() * yesResponses.length)]
-                        : noResponses[Math.floor(Math.random() * noResponses.length)];
-                    message.reply(response);
-                }
+                const quotedContent = repliedMessage.content || '*[no text content]*';
+                message.reply(`> <@${repliedMessage.author.id}>: ${quotedContent}\n${response} `);
             } catch (error) {
-                console.error('Error fetching replied message or Gemini API:', error);
-                const isYes = Math.random() < 0.5;
-                const response = isYes 
-                    ? yesResponses[Math.floor(Math.random() * yesResponses.length)]
-                    : noResponses[Math.floor(Math.random() * noResponses.length)];
                 message.reply(response);
             }
         } else {
-            const isYes = Math.random() < 0.5;
-            const response = isYes 
-                ? yesResponses[Math.floor(Math.random() * yesResponses.length)]
-                : noResponses[Math.floor(Math.random() * noResponses.length)];
             message.reply(response);
         }
     }
