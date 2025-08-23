@@ -8,7 +8,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent
     ],
     allowedMentions: {
-        parse: ['users'],
+        parse: [],
         repliedUser: false
     }
 });
