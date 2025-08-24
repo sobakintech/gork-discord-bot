@@ -3,7 +3,7 @@
 
 - Gives random yes/no/maybe responses
 - Quotes messages when you reply to them
-- Has a 1 second cooldown so you can't spam it
+- Has a 3 second cooldown so you can't spam it (deletes overflow usage attempts too)
 
 ## How to use
 
@@ -15,7 +15,7 @@
 
 ![](assets/replying.png)
 
-### Use context menu command on someone's message
+### *(New)* Use context menu command on someone's message
 
 ![](assets/context-menu-option.png)
 ![](assets/context-menu-option-2.png)
