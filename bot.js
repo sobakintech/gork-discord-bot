@@ -49,7 +49,10 @@ client.once('clientReady', async () => {
     
     const contextCommand = new ContextMenuCommandBuilder()
         .setName('Is this true?')
-        .setType(ApplicationCommandType.Message);
+        .setType(ApplicationCommandType.Message)
+        .setDMPermission(true)
+        .setIntegrationTypes([0, 1]) // 0 = Guild Install, 1 = User Install
+        .setContexts([0, 1, 2]); // 0 = Guild, 1 = Bot DM, 2 = Private Channel
     
     try {
         await client.application.commands.create(contextCommand);
@@ -82,8 +85,8 @@ client.on('messageCreate', async message => {
         if (message.reference && message.reference.messageId) {
             try {
                 const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
-                if (repliedMessage.author.bot) {
-                    message.reply('ur not creating an infinite loop buddy 😭🙏');
+                if (repliedMessage.author.id === client.user.id) {
+                    message.reply('nope, i\'m not creating an infinite loop.');
                     return;
                 }
             } catch (error) {
@@ -161,10 +164,9 @@ client.on('interactionCreate', async interaction => {
     if (interaction.commandName !== 'Is this true?') return;
     
     const targetMessage = interaction.targetMessage;
-    if (targetMessage.author.bot) {
+    if (targetMessage.author.id === client.user.id) {
         await interaction.reply({ 
-            content: 'ur not creating an infinite loop buddy 😭🙏',
-            // flags: InteractionResponseFlags.Ephemeral
+            content: 'nope, i\'m not creating an infinite loop.',
         });
         return;
     }

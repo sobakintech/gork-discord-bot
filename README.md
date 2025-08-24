@@ -16,6 +16,7 @@
 ![](assets/replying.png)
 
 ### *(New)* Use context menu command on someone's message
+You can use the context menu command anywhere when the bot is added to your apps.
 
 ![](assets/context-menu-option.png)
 ![](assets/context-menu-option-2.png)
