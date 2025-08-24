@@ -15,6 +15,11 @@
 
 ![](assets/replying.png)
 
+### Use context menu command on someone's message
+
+![](assets/context-menu-option.png)
+![](assets/context-menu-option-2.png)
+
 ## Response chances
 
 - 40% yes responses (Yes, Absolutely, ofc)

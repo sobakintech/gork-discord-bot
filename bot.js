@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, ContextMenuCommandBuilder, ApplicationCommandType, InteractionResponseFlags } = require('discord.js');
 require('dotenv').config();
 
 const client = new Client({
@@ -15,9 +15,10 @@ const client = new Client({
 
 const userCooldowns = new Map();
 const userCooldownMessages = new Map();
-const COOLDOWN_TIME = 1000;
+const userOverflowMessages = new Map();
+const COOLDOWN_TIME = 3000;
 
-// slang responses written by ai
+// slang responses written by ai bruh
 const yesResponses = [
     'Yes',
     'Absolutely',
@@ -43,8 +44,19 @@ const maybeResponses = [
     'idk bout that one chief'
 ];
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}`);
+    
+    const contextCommand = new ContextMenuCommandBuilder()
+        .setName('Is this true?')
+        .setType(ApplicationCommandType.Message);
+    
+    try {
+        await client.application.commands.create(contextCommand);
+        console.log('Context menu command registered!');
+    } catch (error) {
+        console.error('Failed to register context menu command:', error);
+    }
     
     setInterval(() => {
         const now = Date.now();
@@ -52,6 +64,14 @@ client.once('clientReady', () => {
             if (now - timestamp > COOLDOWN_TIME) {
                 userCooldowns.delete(userId);
                 userCooldownMessages.delete(userId);
+                
+                if (userOverflowMessages.has(userId)) {
+                    const messages = userOverflowMessages.get(userId);
+                    messages.forEach(msg => {
+                        msg.delete().catch(() => {});
+                    });
+                    userOverflowMessages.delete(userId);
+                }
             }
         }
     }, 60000);
@@ -59,6 +79,18 @@ client.once('clientReady', () => {
 
 client.on('messageCreate', async message => {    
     if (message.mentions.has(client.user) && message.content.toLowerCase().includes('is this true')) {
+        if (message.reference && message.reference.messageId) {
+            try {
+                const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
+                if (repliedMessage.author.bot) {
+                    message.reply('ur not creating an infinite loop buddy 😭🙏');
+                    return;
+                }
+            } catch (error) {
+                
+            }
+        }
+        
         const userId = message.author.id;
         const now = Date.now();
         
@@ -70,10 +102,28 @@ client.on('messageCreate', async message => {
                     
                     userCooldownMessages.set(userId, true);
                     
+                    if (!userOverflowMessages.has(userId)) {
+                        userOverflowMessages.set(userId, []);
+                    }
+                    userOverflowMessages.get(userId).push(message);
+                    
                     setTimeout(() => {
                         cooldownMessage.delete().catch(() => {});
                         userCooldownMessages.delete(userId);
+                        
+                        if (userOverflowMessages.has(userId)) {
+                            const messages = userOverflowMessages.get(userId);
+                            messages.forEach(msg => {
+                                msg.delete().catch(() => {});
+                            });
+                            userOverflowMessages.delete(userId);
+                        }
                     }, expirationTime - now);
+                } else {
+                    if (!userOverflowMessages.has(userId)) {
+                        userOverflowMessages.set(userId, []);
+                    }
+                    userOverflowMessages.get(userId).push(message);
                 }
                 return;
             }
@@ -104,6 +154,62 @@ client.on('messageCreate', async message => {
             message.reply(response);
         }
     }
+});
+
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isMessageContextMenuCommand()) return;
+    if (interaction.commandName !== 'Is this true?') return;
+    
+    const targetMessage = interaction.targetMessage;
+    if (targetMessage.author.bot) {
+        await interaction.reply({ 
+            content: 'ur not creating an infinite loop buddy 😭🙏',
+            // flags: InteractionResponseFlags.Ephemeral
+        });
+        return;
+    }
+    
+    const userId = interaction.user.id;
+    const now = Date.now();
+    
+    if (userCooldowns.has(userId)) {
+        const expirationTime = userCooldowns.get(userId) + COOLDOWN_TIME;
+        if (now < expirationTime) {
+            if (!userCooldownMessages.has(userId)) {
+                await interaction.reply({ 
+                    content: `you're on a cooldown, you'll be able to use gork again <t:${Math.floor(expirationTime / 1000)}:R>`,
+                    flags: InteractionResponseFlags.Ephemeral
+                });
+                userCooldownMessages.set(userId, true);
+                setTimeout(() => {
+                    userCooldownMessages.delete(userId);
+                }, expirationTime - now);
+            } else {
+                await interaction.reply({ 
+                    content: 'chill bro slow down',
+                    flags: InteractionResponseFlags.Ephemeral
+                });
+            }
+            return;
+        }
+    }
+    
+    userCooldowns.set(userId, now);
+    
+    const randomValue = Math.random();
+    let response;
+    
+    if (randomValue < 0.2) {
+        response = maybeResponses[Math.floor(Math.random() * maybeResponses.length)];
+    } else if (randomValue < 0.6) {
+        response = yesResponses[Math.floor(Math.random() * yesResponses.length)];
+    } else {
+        response = noResponses[Math.floor(Math.random() * noResponses.length)];
+    }
+    
+    const quotedContent = targetMessage.content || '*[no text content]*';
+    
+    await interaction.reply(`> <@${targetMessage.author.id}>: ${quotedContent}\n${response}`);
 });
 
 client.login(process.env.DISCORD_TOKEN);
